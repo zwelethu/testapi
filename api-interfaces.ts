@@ -1,13 +1,17 @@
-export interface EndpointState {
-  url: string | null;
-  num_tries: number;
-  num_calls: number;
+export interface TResponse {
+  error?: string;
+  status: number;
+  data: TData;
+  success: true;
 }
 
-export interface AppCache {
-  postId: number | null | undefined;
-  id: number | null | undefined;
-  name: string | null | undefined;
-  email: string | null | undefined;
-  body: string | null | undefined;
+export interface TResponseError {
+  status: number;
+  error: string | null;
+  success: false;
+}
+
+export interface TData {
+  zar: number | null;
+  usd: number | null;
 }

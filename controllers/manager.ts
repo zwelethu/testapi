@@ -1,35 +1,31 @@
-import { EndpointState, AppCache } from '../api-interfaces';
+import { TData, TResponse } from '../api-interfaces';
 import { Retrier } from '@jsier/retrier';
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { stringify } from 'querystring';
+import axios, { AxiosResponse, AxiosError } from 'axios';
+import { getEndPoint } from './loadbalancer';
 
 export class Manager {
   constructor() {
     this.cache_expiry = 30; //cache time to live in seconds
-    this.last_call = null; //keeps track of date when last call attempt was made to see if the cache is still valid
-    this.url_state = []; //Keeps track of urls called
+    this.last_call = null;
     this.cache = {
-      postId: null,
-      name: null,
-      id: null,
-      email: null,
-      body: null,
+      usd: null,
+      zar: null,
     }; //stores the result of the last call in cache
     this.delay = 1000; //delay in milli seconds
   }
 
-  cache: AppCache | null;
+  cache: TData | null;
   cache_expiry: number;
   last_call: Date | null;
-  url_state: EndpointState[];
   delay: number;
 
-  fetchData(url: string, params: string, delay: number, limit: number) {
+  fetchData(params: string, delay: number, limit: number) {
+    const endpoint = getEndPoint();
     const options = {
       limit,
       delay,
-      stopRetryingIf: (error: any, attempt: any) =>
-        error.status.toString().startWith('4'),
+      stopRetryingIf: (error: any, attempt: number) =>
+        error.response.status < 500,
     };
     const retrier = new Retrier(options);
     var results = retrier
@@ -37,35 +33,83 @@ export class Manager {
         (attempt) =>
           new Promise((resolve, reject) =>
             axios
-              .get(url, { params: { postId: params } })
-              .then((response: AxiosResponse<EndpointState>) =>
-                resolve(response.data)
-              )
-              .catch((err: AxiosError) => reject(err))
+              .get(endpoint.endpURL, { params: { coin: params } })
+              .then((response: AxiosResponse<TResponse>) => {
+                console.log(`reponse without mapper`, response.data);
+                console.log(`reponse`, this.mapper(response.data));
+                return resolve(this.mapper(response.data));
+              })
+              .catch((err: AxiosError) => {
+                console.log(`${attempt}`);
+                console.log(err.response?.status);
+                return reject(err);
+              })
           )
       )
       .then(
         (result) => {
+          console.log(`endpoint.num_calls`, endpoint.num_calls);
+          endpoint.updateStatus(true, 200);
           this.cache = result; //save result in cache
           this.last_call = new Date(); //save current time so it can be used to determine expiry of cache
           return result;
         },
         (error) => {
           // After limit of attempts, logs: error
-          var idx = this.url_state.findIndex((x) => x.url === url);
-          if (idx < 0)
-            //first time encountering permanent error using this url therefore add it for tracking
-            this.url_state.push({ url, num_tries: 1, num_calls: 1 });
-          //store info about it
-          else {
-            this.url_state[idx].num_calls += 1;
-            this.url_state[idx].num_tries += 1;
+          console.log(`error`, error.response.status);
+          endpoint.updateStatus(false, 500);
+          console.log(`endpoint.num_calls`, endpoint.num_calls);
+          switch (error.response.status) {
+            case 400:
+              return {
+                status: 400,
+                success: false,
+                error: 'Please check your input and try again',
+              };
+            case 401:
+              return {
+                status: 401,
+                success: false,
+                error: 'Please check your credentials and try again',
+              };
+            case 403:
+              return {
+                status: 404,
+                success: false,
+                error: 'Access to this resource is not allowed',
+              };
+            case 404:
+              return {
+                status: 404,
+                success: false,
+                error: 'This resource was not found',
+              };
+            case 500:
+              return {
+                status: 500,
+                success: false,
+                error: 'service unavailable',
+              };
+            default:
+              return {
+                status: error.response.status,
+                success: false,
+                error:
+                  'Service unavailable, please try again later: ' +
+                  error.response.statusText,
+              };
           }
-          return (
-            'Service unavailable, please try again later: ' + error.msessage
-          );
         }
       );
     return results;
   }
+
+  mapper = <T extends { data: TData }>(obj: T) => {
+    return { zar: obj.data.zar, eur: obj.data.usd };
+  };
+
+  getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+    return obj[key];
+  }
+  //const zar = getProperty(data, "zar");
 }
