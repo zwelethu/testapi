@@ -6,50 +6,97 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Manager = void 0;
 const retrier_1 = require("@jsier/retrier");
 const axios_1 = __importDefault(require("axios"));
+const loadbalancer_1 = require("./loadbalancer");
 class Manager {
     constructor() {
+        this.mapper = (obj) => {
+            return { zar: obj.data.zar, eur: obj.data.usd };
+        };
         this.cache_expiry = 30; //cache time to live in seconds
-        this.last_call = null; //keeps track of date when last call attempt was made to see if the cache is still valid
-        this.url_state = []; //Keeps track of urls called
+        this.last_call = null;
         this.cache = {
-            postId: null,
-            name: null,
-            id: null,
-            email: null,
-            body: null,
+            usd: null,
+            zar: null,
         }; //stores the result of the last call in cache
         this.delay = 1000; //delay in milli seconds
     }
-    fetchData(url, params, delay, limit) {
+    fetchData(params, delay, limit) {
+        const endpoint = loadbalancer_1.getEndPoint();
         const options = {
             limit,
             delay,
-            stopRetryingIf: (error, attempt) => error.status.toString().startWith('4'),
+            stopRetryingIf: (error, attempt) => error.response.status < 500,
         };
         const retrier = new retrier_1.Retrier(options);
         var results = retrier
             .resolve((attempt) => new Promise((resolve, reject) => axios_1.default
-            .get(url, { params: { postId: params } })
-            .then((response) => resolve(response.data))
-            .catch((err) => reject(err))))
+            .get(endpoint.endpURL, { params: { coin: params } })
+            .then((response) => {
+            console.log(`reponse without mapper`, response.data);
+            console.log(`reponse`, this.mapper(response.data));
+            return resolve(this.mapper(response.data));
+        })
+            .catch((err) => {
+            var _a;
+            console.log(`${attempt}`);
+            console.log((_a = err.response) === null || _a === void 0 ? void 0 : _a.status);
+            return reject(err);
+        })))
             .then((result) => {
+            console.log(`endpoint.num_calls`, endpoint.num_calls);
+            endpoint.updateStatus(true, 200);
             this.cache = result; //save result in cache
             this.last_call = new Date(); //save current time so it can be used to determine expiry of cache
             return result;
         }, (error) => {
             // After limit of attempts, logs: error
-            var idx = this.url_state.findIndex((x) => x.url === url);
-            if (idx < 0)
-                //first time encountering permanent error using this url therefore add it for tracking
-                this.url_state.push({ url, num_tries: 1, num_calls: 1 });
-            //store info about it
-            else {
-                this.url_state[idx].num_calls += 1;
-                this.url_state[idx].num_tries += 1;
+            console.log(`error`, error.response.status);
+            endpoint.updateStatus(false, 500);
+            console.log(`endpoint.num_calls`, endpoint.num_calls);
+            switch (error.response.status) {
+                case 400:
+                    return {
+                        status: 400,
+                        success: false,
+                        error: 'Please check your input and try again',
+                    };
+                case 401:
+                    return {
+                        status: 401,
+                        success: false,
+                        error: 'Please check your credentials and try again',
+                    };
+                case 403:
+                    return {
+                        status: 404,
+                        success: false,
+                        error: 'Access to this resource is not allowed',
+                    };
+                case 404:
+                    return {
+                        status: 404,
+                        success: false,
+                        error: 'This resource was not found',
+                    };
+                case 500:
+                    return {
+                        status: 500,
+                        success: false,
+                        error: 'service unavailable',
+                    };
+                default:
+                    return {
+                        status: error.response.status,
+                        success: false,
+                        error: 'Service unavailable, please try again later: ' +
+                            error.response.statusText,
+                    };
             }
-            return ('Service unavailable, please try again later: ' + error.msessage);
         });
         return results;
+    }
+    getProperty(obj, key) {
+        return obj[key];
     }
 }
 exports.Manager = Manager;

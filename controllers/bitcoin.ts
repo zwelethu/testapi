@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { Manager } from './manager';
+import { TResponse } from '../api-interfaces';
 
 const manager = new Manager();
-exports.getPosts = (req: Request, resp: Response) => {
-  console.log(!req.params.postId || parseInt(req.params.postId) > 100);
-  if (!req.params.postId || parseInt(req.params.postId) > 100)
+
+exports.getPrice = (req: Request, resp: Response) => {
+  console.log(!req.params.coin || req.params.coin !== 'bth');
+  if (!req.params.coin || req.params.coin !== 'bth')
     //attempt at sanitising input
     return resp.status(400).json({
       success: false,
@@ -21,14 +23,20 @@ exports.getPosts = (req: Request, resp: Response) => {
       });
     }
   }
+
   manager
-    .fetchData(req.params.postId, manager.delay, 3) //attempt to call api with delay and max 3 attempts
-    .then((data) => {
-      console.log('from actual call');
-      return resp.status(200).json({
-        success: true,
-        data,
-      });
+    .fetchData(req.params.coin, manager.delay, 3) //attempt to call api with delay and max 3 attempts
+    .then((data: TResponse) => {
+      if (data.error) {
+        console.log(data);
+
+        return resp.status(data.status).json({
+          success: false,
+          error: data.error,
+        });
+      } else {
+        return resp.json({ data });
+      }
     })
     .catch((err) => {
       return resp.status(400).json({
