@@ -18,6 +18,18 @@ export class Manager {
   cache_expiry: number;
   last_call: Date | null;
   delay: number;
+  //if the endpoint require login, I would do it like this:
+  //const tok = 'my_username:my_password';
+  //const encoded = btoa(tok);
+  //const Basic = 'Basic ' + encoded;
+  //axios.get('http://endpoint_url/', {headers : { 'Authorization' : Basic }})
+  //OR
+  //axios.get('https:/endpoint_url/', {
+  //  auth: {
+  //    username: 'foo',
+  //    password: 'bar'
+  //  }
+  //});
 
   fetchData(params: string, delay: number, limit: number) {
     const endpoint = getEndPoint();
