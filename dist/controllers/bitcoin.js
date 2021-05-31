@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getPrice = void 0;
 const manager_1 = require("./manager");
 const manager = new manager_1.Manager();
-exports.getPrice = (req, resp) => {
+const getPrice = (req, res, next) => {
     console.log(!req.params.coin || req.params.coin !== 'bth');
     if (!req.params.coin || req.params.coin !== 'bth')
         //attempt at sanitising input
-        return resp.status(400).json({
+        return res.status(400).json({
             success: false,
             error: 'Unsupported input received',
         });
@@ -15,7 +16,7 @@ exports.getPrice = (req, resp) => {
         var seconds = (new Date().getTime() - manager.last_call.getTime()) / 1000; //check if cache is still valid
         if (seconds < manager.cache_expiry) {
             console.log('from cache');
-            return resp.status(200).json({
+            return res.status(200).json({
                 success: true,
                 data: manager.cache,
             });
@@ -26,19 +27,20 @@ exports.getPrice = (req, resp) => {
         .then((data) => {
         if (data.error) {
             console.log(data);
-            return resp.status(data.status).json({
+            return res.status(data.status).json({
                 success: false,
                 error: data.error,
             });
         }
         else {
-            return resp.json({ data });
+            return res.json({ data });
         }
     })
         .catch((err) => {
-        return resp.status(400).json({
+        return res.status(400).json({
             success: false,
             error: err,
         });
     });
 };
+exports.getPrice = getPrice;

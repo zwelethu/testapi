@@ -1,14 +1,14 @@
-import { Request, Response } from 'express';
+import { RequestHandler } from 'express';
 import { Manager } from './manager';
 import { TResponse } from '../api-interfaces';
 
 const manager = new Manager();
 
-exports.getPrice = (req: Request, resp: Response) => {
+export const getPrice: RequestHandler<{ coin: string }> = (req, res, next) => {
   console.log(!req.params.coin || req.params.coin !== 'bth');
   if (!req.params.coin || req.params.coin !== 'bth')
     //attempt at sanitising input
-    return resp.status(400).json({
+    return res.status(400).json({
       success: false,
       error: 'Unsupported input received',
     });
@@ -17,7 +17,7 @@ exports.getPrice = (req: Request, resp: Response) => {
     var seconds = (new Date().getTime() - manager.last_call.getTime()) / 1000; //check if cache is still valid
     if (seconds < manager.cache_expiry) {
       console.log('from cache');
-      return resp.status(200).json({
+      return res.status(200).json({
         success: true,
         data: manager.cache,
       });
@@ -30,16 +30,16 @@ exports.getPrice = (req: Request, resp: Response) => {
       if (data.error) {
         console.log(data);
 
-        return resp.status(data.status).json({
+        return res.status(data.status).json({
           success: false,
           error: data.error,
         });
       } else {
-        return resp.json({ data });
+        return res.json({ data });
       }
     })
     .catch((err) => {
-      return resp.status(400).json({
+      return res.status(400).json({
         success: false,
         error: err,
       });

@@ -11,6 +11,9 @@ app.get('/api/v1', (req, res) => {
 });
 const bitcoin = require('./routes/bitcoint');
 app.use('/api/v1/prices', bitcoin);
+app.use((err, req, res, next) => {
+    res.status(500).json({ message: err.message });
+});
 app.listen(4500, () => {
     console.log('Node server started running');
 });
