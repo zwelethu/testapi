@@ -4,9 +4,10 @@
   "description": "",
   "main": "server.js",
   "scripts": {
+    "watch": "tsc -w",
     "start": "tsc && node dist/server.js",
     "test": "mocha index.test.js",
-    "dev": "tsc && nodemon server.ts"
+    "dev": "nodemon dist/server.js"
   },
   "author": "Sandile",
   "license": "ISC",

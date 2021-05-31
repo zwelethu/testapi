@@ -20,6 +20,18 @@ class Manager {
         }; //stores the result of the last call in cache
         this.delay = 1000; //delay in milli seconds
     }
+    //if the endpoint require login, I would do it like this:
+    //const tok = 'my_username:my_password';
+    //const encoded = btoa(tok);
+    //const Basic = 'Basic ' + encoded;
+    //axios.get('http://endpoint_url/', {headers : { 'Authorization' : Basic }})
+    //OR
+    //axios.get('https:/endpoint_url/', {
+    //  auth: {
+    //    username: 'foo',
+    //    password: 'bar'
+    //  }
+    //});
     fetchData(params, delay, limit) {
         const endpoint = loadbalancer_1.getEndPoint();
         const options = {

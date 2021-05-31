@@ -1,14 +1,12 @@
 export class CURLState {
-  constructor(order: number, url: string) {
+  constructor(public rank: number, public url: string) {
     this.available = true;
-    this.rank = order;
     this.endpURL = url;
     this.last_attempt = null;
     this.num_calls = 0;
     this.waiting_period = 5000;
   }
   available: Boolean;
-  rank: number;
   endpURL: string;
   last_attempt: Date | null;
   num_calls: number;

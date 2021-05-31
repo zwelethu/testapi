@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CURLState = void 0;
 class CURLState {
-    constructor(order, url) {
+    constructor(rank, url) {
+        this.rank = rank;
+        this.url = url;
         this.updateStatus = (passed, status) => {
             this.last_attempt = new Date();
             this.num_calls += 1;
@@ -17,7 +19,6 @@ class CURLState {
             }
         };
         this.available = true;
-        this.rank = order;
         this.endpURL = url;
         this.last_attempt = null;
         this.num_calls = 0;
